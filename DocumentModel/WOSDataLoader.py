@@ -3,7 +3,7 @@ from datasets import load_dataset
 from torch.utils.data import random_split, DataLoader
 from math import floor
 
-from DocumentModel.WOSDataset import WOSDataset
+from WOSDataset import WOSDataset
 
 
 class WOSDataModule(pl.LightningDataModule):

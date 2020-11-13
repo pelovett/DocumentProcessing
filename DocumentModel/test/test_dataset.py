@@ -1,5 +1,5 @@
-from DocumentModel.WOSDataset import WOSDataset
-from DocumentModel.WOSDataLoader import WOSDataModule
+from WOSDataset import WOSDataset
+from WOSDataLoader import WOSDataModule
 import sys
 
 
