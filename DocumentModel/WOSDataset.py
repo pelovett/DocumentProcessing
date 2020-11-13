@@ -43,10 +43,10 @@ class WOSDataset(Dataset):
     def __getitem__(self, idx):
         sample = {}
         sample['features'] = self.tokenizer.tokenize(self.x[idx])
-        sample['input_ids'] = torch.tensor(
+        sample['input_ids'] = torch.LongTensor(
             self.tokenizer.convert_tokens_to_ids(sample['features'])
         )
-        sample['label'] = torch.Tensor([int(self.y[idx])])
+        sample['label'] = torch.LongTensor([int(self.y[idx])])
         return sample
 
     def __iter__(self):

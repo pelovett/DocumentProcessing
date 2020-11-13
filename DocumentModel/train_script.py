@@ -1,7 +1,7 @@
 import pytorch_lightning as pl
 
-from WOSDataLoader import WOSDataModule
-from WOSDataset import WOSDataset
+from DocumentModel.WOSDataLoader import WOSDataModule
+from DocumentModel.WOSDataset import WOSDataset
 from DocumentModel import DocumentModel
 
 

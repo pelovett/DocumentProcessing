@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.nn.functional as F
 import torch
 import pytorch_lightning as pl
 from transformers import BertModel, BertConfig
@@ -19,12 +20,34 @@ class DocumentModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x = batch['input_ids']
         y = batch['label'].flatten()
+        if x.shape[-1] > 512:
+            x = x[:, :512]
         x_hat = self.head(self.base_model(x)[1])
-        x_hat = nn.functional.softmax(x_hat, dim=-1)
-        loss = self.loss(x_hat, y.to(torch.long))
+        x_hat = F.softmax(x_hat, dim=-1)
+        loss = self.loss(x_hat, y)
         self.log('train_loss', loss)
         return loss
 
+    def validation_step(self, batch, batch_idx):
+        x = batch['input_ids']
+        y = batch['label'].flatten()  # Fix this for batch_num > 1
+        if x.shape[-1] > 512:
+            x = x[:, :512]
+        x_hat = self.head(self.base_model(x)[1])
+        x_hat = F.softmax(x_hat, dim=-1)
+        loss = self.loss(x_hat, y)
+        self.log('validation_loss', loss)
+        pred = x_hat.argmax(dim=-1)
+        return pred == y
+
+    def validation_epoch_end(self, validation_step_outputs):
+        total_samples = 0
+        num_correct = 0
+        for result in validation_step_outputs:
+            total_samples += result.shape[0]  # Fix this for batch_num > 1
+            num_correct += result.int().sum()
+        self.log('validation_acc', num_correct/total_samples*100)
+
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=3e-5)
         return optimizer

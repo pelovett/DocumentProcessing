@@ -3,7 +3,7 @@ from datasets import load_dataset
 from torch.utils.data import random_split, DataLoader
 from math import floor
 
-from WOSDataset import WOSDataset
+from DocumentModel.WOSDataset import WOSDataset
 
 
 class WOSDataModule(pl.LightningDataModule):
@@ -34,7 +34,7 @@ class WOSDataModule(pl.LightningDataModule):
                          )
 
     def train_dataloader(self):
-        return DataLoader(self.train_split, batch_size=self.batch_size)
+        return DataLoader(self.train_split, batch_size=self.batch_size, num_workers=4)
 
     def val_dataloader(self):
         return DataLoader(self.eval_split, batch_size=self.batch_size)

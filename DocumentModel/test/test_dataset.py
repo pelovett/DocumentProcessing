@@ -1,5 +1,7 @@
-from WOSDataset import WOSDataset
-from WOSDataLoader import WOSDataModule
+from DocumentModel.WOSDataset import WOSDataset
+from DocumentModel.WOSDataLoader import WOSDataModule
+import sys
+
 
 test_dirs = ['./data/WOS11967/', './data/WOS5736/', './data/WOS46985/', '~']
 
