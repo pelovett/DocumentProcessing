@@ -9,7 +9,7 @@ def main():
     wos_data = WOSDataModule()
     model = DocumentModel(num_classes=7)
 
-    trainer = pl.Trainer()
+    trainer = pl.Trainer(log_every_n_steps=50)
     trainer.fit(model, wos_data)
 
 

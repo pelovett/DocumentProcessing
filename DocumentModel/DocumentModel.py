@@ -22,7 +22,7 @@ class DocumentModel(pl.LightningModule):
         y = batch['label'].flatten()
         if x.shape[-1] > 512:
             x = x[:, :512]
-        x_hat = self.head(self.base_model(x)[1])
+        x_hat = self.head(self.base_model(x)[0][:, 0, :])
         x_hat = F.softmax(x_hat, dim=-1)
         loss = self.loss(x_hat, y)
         self.log('train_loss', loss)
@@ -33,7 +33,7 @@ class DocumentModel(pl.LightningModule):
         y = batch['label'].flatten()  # Fix this for batch_num > 1
         if x.shape[-1] > 512:
             x = x[:, :512]
-        x_hat = self.head(self.base_model(x)[1])
+        x_hat = self.head(self.base_model(x)[0][:, 0, :])
         x_hat = F.softmax(x_hat, dim=-1)
         loss = self.loss(x_hat, y)
         self.log('validation_loss', loss)
