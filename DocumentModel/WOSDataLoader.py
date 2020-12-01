@@ -3,21 +3,29 @@ from datasets import load_dataset
 from torch.utils.data import random_split, DataLoader
 from torch.nn.utils.rnn import pad_sequence
 import torch
+from transformers import BertTokenizer
+
 from math import floor
 
 from WOSDataset import WOSDataset
 
 
 class WOSDataModule(pl.LightningDataModule):
+    acceptable_model_types = set(['first', 'sliding_window', 'aggregation'])
+    default_window = 128
 
     def __init__(self,
                  data_dir: str = './data/WOS11967/',
                  tokenizer_name: str = 'bert-base-cased',
-                 batch_size: int = 1):
+                 batch_size: int = 1,
+                 model_type: str = 'first'):
         super().__init__()
+        assert model_type in WOSDataModule.acceptable_model_types
         self.data_dir = data_dir
         self.tokenizer_name = tokenizer_name
+        self.tokenizer = BertTokenizer.from_pretrained(tokenizer_name)
         self.batch_size = batch_size
+        self.model_type = model_type
 
     def prepare_data(self):
         self.dataset = WOSDataset(self.data_dir, self.tokenizer_name)
@@ -37,19 +45,66 @@ class WOSDataModule(pl.LightningDataModule):
 
     def collate_dict(self, batch):
         output_batch = dict()
-        if len(batch) > 1:
-            output_batch['input_ids'] = pad_sequence(
-                        [batch[i]['input_ids'] for i in range(len(batch))],
-                batch_first=True
-            )
-            output_batch['label'] = pad_sequence(
-                [batch[i]['label'] for i in range(len(batch))],
-                batch_first=True
-            )
-        else:
-            output_batch['input_ids'] = batch[0]['input_ids'].unsqueeze(dim=0)
-            output_batch['label'] = batch[0]['label'].unsqueeze(dim=0)
-        output_batch['mask'] = (output_batch['label'] != 0)
+        output_batch['text'] = [batch[i]['text']
+                                for i in range(len(batch))]
+        output_batch['label'] = [batch[i]['label']
+                                 for i in range(len(batch))]
+        if self.model_type == 'first':
+            output_batch.update(self.tokenizer(
+                output_batch['text'],
+                padding=True,
+                truncation=True,
+                max_length=WOSDataModule.default_window,
+                return_tensors='pt'))
+        elif self.model_type == 'sliding_window':
+            window_size = WOSDataModule.default_window - 2
+            token_output = self.tokenizer(
+                output_batch['text'],
+                add_special_tokens=False,
+                verbose=False)
+            # window_key is an index of a batches subdivisions
+            window_key = []
+            window_index = 0
+            output_batch['input_ids'] = []
+            output_batch['attention_mask'] = []
+            output_batch['token_type_ids'] = []
+            for i, doc in enumerate(token_output['input_ids']):
+                temp_map = []
+                doc_len = len(doc)
+                prev_end = 0
+                for j in range(doc_len // window_size):
+                    # Group this current batch with its parent
+                    temp_map.append(window_index)
+                    window_index += 1
+                    cur_end = (j + 1) * window_size
+                    output_batch['input_ids'].append([101] +
+                                                     doc[prev_end:cur_end] +
+                                                     [102])
+                    output_batch['token_type_ids'].append([0]*(window_size+2))
+                    output_batch['attention_mask'].append([1]*(window_size+2))
+                    prev_end = cur_end
+                if doc_len % window_size != 0:
+                    temp_map.append(window_index)
+                    window_index += 1
+                    pad_value = window_size - len(doc[prev_end:])
+                    # Adds the [CLS] and [SEP] tokens then pads to fill window
+                    output_batch['input_ids'].append([101] +
+                                                     doc[prev_end:] +
+                                                     [102] +
+                                                     [0] * pad_value)
+                    output_batch['token_type_ids'].append([0]*(window_size+2))
+                    attn_mask = [1] * (len(doc[prev_end:])+2) + \
+                        [0] * pad_value
+                    output_batch['attention_mask'].append(attn_mask)
+                window_key.append(temp_map)
+
+            output_batch['input_ids'] = torch.LongTensor(
+                output_batch['input_ids'])
+            output_batch['token_type_ids'] = torch.IntTensor(
+                output_batch['token_type_ids'])
+            output_batch['attention_mask'] = torch.IntTensor(
+                output_batch['attention_mask'])
+            output_batch['window_map'] = window_key
         return output_batch
 
     def train_dataloader(self):

@@ -7,7 +7,9 @@ import logging
 class WOSDataset(Dataset):
     logger = logging.getLogger(__name__)
 
-    def __init__(self, file_path: str = './data/WOS11967/', tokenizer: str = 'bert-base-cased'):
+    def __init__(self,
+                 file_path: str = './data/WOS11967/',
+                 tokenizer: str = 'bert-base-cased'):
         super().__init__()
         self.file_path = file_path
 
@@ -35,17 +37,13 @@ class WOSDataset(Dataset):
             raise FileNotFoundError
         self.num_labels = len(tag_set)
         assert len(self.x) == len(self.y)
-        self.tokenizer = BertTokenizer.from_pretrained(tokenizer)
 
     def __len__(self):
         return len(self.x)
 
     def __getitem__(self, idx):
         sample = {}
-        sample['features'] = self.tokenizer.tokenize(self.x[idx])
-        sample['input_ids'] = torch.LongTensor(
-            self.tokenizer.convert_tokens_to_ids(sample['features'])
-        )
+        sample['text'] = self.x[idx]
         sample['label'] = torch.LongTensor([int(self.y[idx])])
         return sample
 
