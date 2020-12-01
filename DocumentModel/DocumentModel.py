@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pad_sequence
 import torch
 import pytorch_lightning as pl
 from transformers import BertModel, BertConfig
@@ -7,7 +8,8 @@ from sklearn.metrics import f1_score
 
 
 class DocumentModel(pl.LightningModule):
-    acceptable_model_types = set(['first', 'sliding_window', 'aggregation'])
+    acceptable_model_types = set(
+        ['first', 'sliding_window', 'transformer', 'rnn'])
 
     def __init__(self,
                  num_classes: int,
@@ -19,9 +21,18 @@ class DocumentModel(pl.LightningModule):
         self.base_config = BertConfig.from_pretrained(transformer_base)
         self.base_model = BertModel.from_pretrained(transformer_base)
         self.head = nn.Linear(self.base_config.hidden_size, num_classes)
-        if model_type == 'aggregation':
-            self.aggregator = None  # Figure out aggregation
-
+        if model_type == 'transformer':
+            self.aggregator = nn.TransformerEncoderLayer(
+                self.base_config.hidden_size,
+                nhead=4,
+                dropout=0.2)
+        elif model_type == 'rnn':
+            self.aggregator = nn.GRU(
+                hidden_size=2048,  # Same as linear layer in transformer
+                input_size=self.base_config.hidden_size,
+                batch_first=True,
+                dropout=0.2)
+            self.head = nn.Linear(2048, num_classes)
         self.loss = nn.CrossEntropyLoss()
 
     def forward(self, batch):
@@ -36,6 +47,24 @@ class DocumentModel(pl.LightningModule):
                 cls_out[window, 0, :].mean(dim=0, keepdim=True)
                 for window in window_map])
             x_hat = self.head(x_hat.squeeze(dim=1))
+        elif self.model_type == 'transformer':
+            cls_out = self.base_model(x)[0]
+            window_map = batch['window_map']
+            x_hat = pad_sequence([cls_out[doc, 0, :] for doc in window_map],
+                                 batch_first=True)
+            # not sure why there's no batch first option
+            x_hat = self.aggregator(x_hat.transpose(1, 0)).transpose(1, 0)
+            # multiply by mask to avoid impact of pad
+            x_hat = torch.mean((x_hat * batch['doc_attention_mask']), dim=1)
+            x_hat = self.head(x_hat)
+        elif self.model_type == 'rnn':
+            cls_out = self.base_model(x)[0]
+            window_map = batch['window_map']
+            x_hat = pad_sequence([cls_out[doc, 0, :] for doc in window_map],
+                                 batch_first=True)
+            x_hat = self.aggregator(x_hat)[0]
+            x_hat = torch.mean(x_hat, dim=1)
+            x_hat = self.head(x_hat)
         x_hat = F.softmax(x_hat, dim=-1)
         return x_hat
 

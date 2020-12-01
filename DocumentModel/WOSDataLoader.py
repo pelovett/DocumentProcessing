@@ -11,7 +11,9 @@ from WOSDataset import WOSDataset
 
 
 class WOSDataModule(pl.LightningDataModule):
-    acceptable_model_types = set(['first', 'sliding_window', 'aggregation'])
+    acceptable_model_types = set(
+        ['first', 'sliding_window', 'transformer', 'rnn'])
+    transformer_sizes = {'bert-base-cased': 768}
     default_window = 128
 
     def __init__(self,
@@ -21,6 +23,9 @@ class WOSDataModule(pl.LightningDataModule):
                  model_type: str = 'first'):
         super().__init__()
         assert model_type in WOSDataModule.acceptable_model_types
+        if tokenizer_name not in WOSDataModule.transformer_sizes:
+            print(f'Code not configured for model: {tokenizer_name}')
+            raise AttributeError
         self.data_dir = data_dir
         self.tokenizer_name = tokenizer_name
         self.tokenizer = BertTokenizer.from_pretrained(tokenizer_name)
@@ -56,7 +61,7 @@ class WOSDataModule(pl.LightningDataModule):
                 truncation=True,
                 max_length=WOSDataModule.default_window,
                 return_tensors='pt'))
-        elif self.model_type == 'sliding_window':
+        else:
             window_size = WOSDataModule.default_window - 2
             token_output = self.tokenizer(
                 output_batch['text'],
@@ -97,7 +102,15 @@ class WOSDataModule(pl.LightningDataModule):
                         [0] * pad_value
                     output_batch['attention_mask'].append(attn_mask)
                 window_key.append(temp_map)
-
+            if self.model_type in {'transformer', 'rnn'}:
+                # Create attention mask
+                # for some reason pytorch uses zeros as the unmasked value
+                hidden_size = \
+                    WOSDataModule.transformer_sizes[self.tokenizer_name]
+                temp = [torch.zeros((len(doc), hidden_size))
+                        for doc in window_key]
+                output_batch['doc_attention_mask'] = pad_sequence(
+                    temp, batch_first=True, padding_value=1.0)
             output_batch['input_ids'] = torch.LongTensor(
                 output_batch['input_ids'])
             output_batch['token_type_ids'] = torch.IntTensor(
