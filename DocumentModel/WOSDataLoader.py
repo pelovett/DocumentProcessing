@@ -16,12 +16,13 @@ class WOSDataModule(pl.LightningDataModule):
     transformer_sizes = {'bert-base-cased': 768}
     default_window = 128
 
-    def __init__(self,
-                 data_dir: str = './data/WOS11967/',
-                 tokenizer_name: str = 'bert-base-cased',
-                 batch_size: int = 1,
-                 model_type: str = 'first'):
+    def __init__(self, config):
         super().__init__()
+        model_type = config['model_type']
+        tokenizer_name = config['transformer_name']
+        data_dir = config['dataset_path']
+        batch_size = config['batch_size']
+
         assert model_type in WOSDataModule.acceptable_model_types
         if tokenizer_name not in WOSDataModule.transformer_sizes:
             print(f'Code not configured for model: {tokenizer_name}')

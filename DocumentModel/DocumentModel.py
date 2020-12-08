@@ -11,28 +11,31 @@ class DocumentModel(pl.LightningModule):
     acceptable_model_types = set(
         ['first', 'sliding_window', 'transformer', 'rnn'])
 
-    def __init__(self,
-                 num_classes: int,
-                 transformer_base: str = 'bert-base-cased',
-                 model_type: str = 'first'):
+    def __init__(self, config):
         super().__init__()
-        assert model_type in DocumentModel.acceptable_model_types
-        self.model_type = model_type
+        self.model_type = config['model_type']
+        self.learning_rate = config['learning_rate']
+        dropout = config['dropout']
+        transformer_base = config['transformer_name']
+        num_classes = config['num_classes']
+
+        assert self.model_type in DocumentModel.acceptable_model_types
         self.base_config = BertConfig.from_pretrained(transformer_base)
         self.base_model = BertModel.from_pretrained(transformer_base)
         self.head = nn.Linear(self.base_config.hidden_size, num_classes)
-        if model_type == 'transformer':
+        if self.model_type == 'transformer':
             self.aggregator = nn.TransformerEncoderLayer(
                 self.base_config.hidden_size,
                 nhead=4,
-                dropout=0.2)
-        elif model_type == 'rnn':
+                dim_feedforward=config['hidden_size'],
+                dropout=dropout)
+        elif self.model_type == 'rnn':
             self.aggregator = nn.GRU(
-                hidden_size=2048,  # Same as linear layer in transformer
+                hidden_size=config['hidden_size'],
                 input_size=self.base_config.hidden_size,
                 batch_first=True,
-                dropout=0.2)
-            self.head = nn.Linear(2048, num_classes)
+                dropout=dropout)
+            self.head = nn.Linear(config['hidden_size'], num_classes)
         self.loss = nn.CrossEntropyLoss()
 
     def forward(self, batch):
@@ -55,7 +58,7 @@ class DocumentModel(pl.LightningModule):
             # not sure why there's no batch first option
             x_hat = self.aggregator(x_hat.transpose(1, 0)).transpose(1, 0)
             # multiply by mask to avoid impact of pad
-            x_hat = torch.mean((x_hat * batch['doc_attention_mask']), dim=1)
+            x_hat = torch.mean(x_hat, dim=1)
             x_hat = self.head(x_hat)
         elif self.model_type == 'rnn':
             cls_out = self.base_model(x)[0]
@@ -97,5 +100,5 @@ class DocumentModel(pl.LightningModule):
         self.log('validation_acc', num_correct/total_samples)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=1e-5)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
         return optimizer

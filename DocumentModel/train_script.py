@@ -1,21 +1,29 @@
+import sys
+import argparse
+
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import early_stopping, ModelCheckpoint
+import yaml
 
 from WOSDataLoader import WOSDataModule
 from WOSDataset import WOSDataset
 from DocumentModel import DocumentModel
 
 
-def main():
-    mod_type = 'sliding_window'
+def main(config, gpus):
+    patience = config['early_stop_patience']
+    min_delta = config['early_stop_delta']
+    log_dir = config['logging_dir']
+    run_name = config['experiment_name']
+    seed = config['seed']
 
-    wos_data = WOSDataModule(batch_size=2, model_type=mod_type)
-    model = DocumentModel(num_classes=7, model_type=mod_type)
+    wos_data = WOSDataModule(config)
+    model = DocumentModel(config)
 
     early_stop_callback = early_stopping.EarlyStopping(
         monitor='validation_f1',
-        min_delta=0.001,
-        patience=5,
+        min_delta=min_delta,
+        patience=patience,
         verbose=False,
         mode='max'
     )
@@ -23,15 +31,36 @@ def main():
     model_checkpoint_callback = ModelCheckpoint(
         monitor='validation_f1',
         dirpath='models/',
-        filename='wos-bert-{epoch:02d}-{validation_f1:.2f}',
+        filename='run_name',
         mode='max'
     )
 
+    logger = pl.loggers.TensorBoardLogger(log_dir,
+                                          name=run_name)
+    logger.log_hyperparams(config)
+
     trainer = pl.Trainer(callbacks=[early_stop_callback,
                                     model_checkpoint_callback],
-                         log_every_n_steps=50)
+                         logger=logger,
+                         log_every_n_steps=50,
+                         gpus=[gpus] if gpus else None)
+    pl.trainer.seed_everything(seed)
     trainer.fit(model, wos_data)
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Train a model')
+    parser.add_argument('--config', default=None)
+    parser.add_argument('--gpus', default=None, type=int)
+    args = parser.parse_args()
+
+    try:
+        config = yaml.load(open(args.config, 'r'), Loader=yaml.SafeLoader)
+        main(config, args.gpus)
+    except IndexError:
+        print(f'Must pass in config file. Usage: python3 train_script.py config_file')
+    except FileNotFoundError:
+        print(f'Unable to find file {sys.argv[1]}')
+    except:
+        print("Unexpected error:", sys.exc_info()[0])
+        raise
