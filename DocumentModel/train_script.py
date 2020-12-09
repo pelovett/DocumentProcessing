@@ -36,6 +36,7 @@ def main(config, gpus):
     )
 
     logger = pl.loggers.TensorBoardLogger(log_dir,
+                                          default_hp_metric=True,
                                           name=run_name)
     logger.log_hyperparams(config)
 

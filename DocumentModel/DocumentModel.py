@@ -3,6 +3,7 @@ import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
 import torch
 import pytorch_lightning as pl
+import numpy as np
 from transformers import BertModel, BertConfig
 from sklearn.metrics import f1_score
 
@@ -18,6 +19,7 @@ class DocumentModel(pl.LightningModule):
         dropout = config['dropout']
         transformer_base = config['transformer_name']
         num_classes = config['num_classes']
+        self.config = config
 
         assert self.model_type in DocumentModel.acceptable_model_types
         self.base_config = BertConfig.from_pretrained(transformer_base)
@@ -37,6 +39,8 @@ class DocumentModel(pl.LightningModule):
                 dropout=dropout)
             self.head = nn.Linear(config['hidden_size'], num_classes)
         self.loss = nn.CrossEntropyLoss()
+        self.f1_score = pl.metrics.classification.F1(num_classes=num_classes)
+        self.accuracy = pl.metrics.classification.Accuracy()
 
     def forward(self, batch):
         x = batch['input_ids']
@@ -84,20 +88,15 @@ class DocumentModel(pl.LightningModule):
         loss = self.loss(x_hat, y)
         self.log('validation_loss', loss)
         pred = x_hat.argmax(dim=-1)
-        return pred.item(), y.item()
+        return pred.detach(), y.detach()
 
     def validation_epoch_end(self, validation_step_outputs):
-        guesses, correct_values = [], []
-        total_samples = 0
-        num_correct = 0
-        for result in validation_step_outputs:
-            total_samples += 1
-            num_correct += (1 if result[0] == result[1] else 0)
-            guesses.append(result[0])
-            correct_values.append(result[1])
-        self.log('validation_f1', f1_score(
-            correct_values, guesses, average='macro'))
-        self.log('validation_acc', num_correct/total_samples)
+        guesses = torch.cat([x[0] for x in validation_step_outputs])
+        labels = torch.cat([x[1] for x in validation_step_outputs])
+        val_f1 = self.f1_score(guesses, labels)
+        val_acc = self.accuracy(guesses, labels)
+        self.log('validation_f1', val_f1)
+        self.log('validation_acc', val_acc)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
