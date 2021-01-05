@@ -1,5 +1,5 @@
 torch>=1.6
-pytorch_lightning>=1.0.4
+pytorch_lightning>=1.0.8
 datasets>=1.1.2
 transformers>=3.4.0
 sklearn
