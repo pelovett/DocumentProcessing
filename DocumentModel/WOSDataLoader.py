@@ -3,7 +3,7 @@ from datasets import load_dataset
 from torch.utils.data import random_split, DataLoader
 from torch.nn.utils.rnn import pad_sequence
 import torch
-from transformers import BertTokenizer
+from transformers import AutoTokenizer
 
 from math import floor
 
@@ -13,25 +13,27 @@ from WOSDataset import WOSDataset
 class WOSDataModule(pl.LightningDataModule):
     acceptable_model_types = set(
         ['first', 'sliding_window', 'transformer', 'rnn'])
-    transformer_sizes = {'bert-base-cased': 768}
-    default_window = 128
+    transformer_sizes = {
+        'bert-base-cased': 768,
+        'allenai/longformer-base-4096': 768,
+        'roberta-base': 768,
+        'roberta-large': 1024
+    }
 
     def __init__(self, config):
         super().__init__()
-        model_type = config['model_type']
-        tokenizer_name = config['transformer_name']
-        data_dir = config['dataset_path']
-        batch_size = config['batch_size']
 
-        assert model_type in WOSDataModule.acceptable_model_types
-        if tokenizer_name not in WOSDataModule.transformer_sizes:
-            print(f'Code not configured for model: {tokenizer_name}')
+        assert config['model_type'] in WOSDataModule.acceptable_model_types
+        if config['transformer_name'] not in WOSDataModule.transformer_sizes:
+            print(
+                f"Code not configured for model: {config['transformer_name']}")
             raise AttributeError
-        self.data_dir = data_dir
-        self.tokenizer_name = tokenizer_name
-        self.tokenizer = BertTokenizer.from_pretrained(tokenizer_name)
-        self.batch_size = batch_size
-        self.model_type = model_type
+        self.window_size = config['window_size']
+        self.data_dir = config['dataset_path']
+        self.tokenizer_name = config['transformer_name']
+        self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_name)
+        self.batch_size = config['batch_size']
+        self.model_type = config['model_type']
 
     def prepare_data(self):
         self.dataset = WOSDataset(self.data_dir, self.tokenizer_name)
@@ -60,10 +62,10 @@ class WOSDataModule(pl.LightningDataModule):
                 output_batch['text'],
                 padding=True,
                 truncation=True,
-                max_length=WOSDataModule.default_window,
+                max_length=self.window_size,
                 return_tensors='pt'))
         else:
-            window_size = WOSDataModule.default_window - 2
+            window_size = self.window_size - 2
             token_output = self.tokenizer(
                 output_batch['text'],
                 add_special_tokens=False,

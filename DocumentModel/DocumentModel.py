@@ -4,7 +4,7 @@ from torch.nn.utils.rnn import pad_sequence
 import torch
 import pytorch_lightning as pl
 import numpy as np
-from transformers import BertModel, BertConfig
+from transformers import AutoModel, AutoConfig
 from sklearn.metrics import f1_score
 
 
@@ -22,8 +22,8 @@ class DocumentModel(pl.LightningModule):
         self.config = config
 
         assert self.model_type in DocumentModel.acceptable_model_types
-        self.base_config = BertConfig.from_pretrained(transformer_base)
-        self.base_model = BertModel.from_pretrained(transformer_base)
+        self.base_config = AutoConfig.from_pretrained(transformer_base)
+        self.base_model = AutoModel.from_pretrained(transformer_base)
         self.head = nn.Linear(self.base_config.hidden_size, num_classes)
         if self.model_type == 'transformer':
             self.aggregator = nn.TransformerEncoderLayer(

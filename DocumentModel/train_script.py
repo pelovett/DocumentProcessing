@@ -46,6 +46,7 @@ def main(config, gpus):
                          log_every_n_steps=50,
                          progress_bar_refresh_rate=0,
                          gpus=[gpus] if gpus != None else None)
+    # precision=16)
     pl.trainer.seed_everything(seed)
     trainer.fit(model, wos_data)
 
