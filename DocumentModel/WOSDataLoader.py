@@ -125,7 +125,7 @@ class WOSDataModule(pl.LightningDataModule):
         return DataLoader(self.train_split,
                           collate_fn=self.collate_dict,
                           batch_size=self.batch_size,
-                          num_workers=4)
+                          num_workers=6)
 
     def val_dataloader(self):
         return DataLoader(self.eval_split,

@@ -44,7 +44,8 @@ def main(config, gpus):
                                     model_checkpoint_callback],
                          logger=logger,
                          log_every_n_steps=50,
-                         gpus=[gpus] if gpus else None)
+                         progress_bar_refresh_rate=0,
+                         gpus=[gpus] if gpus != None else None)
     pl.trainer.seed_everything(seed)
     trainer.fit(model, wos_data)
 
