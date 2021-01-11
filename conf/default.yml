@@ -2,12 +2,13 @@ experiment_name: default_run
 dataset_path: ./data/WOS11967/
 transformer_name: bert-base-cased
 logging_dir: lightning_logs
-model_type: rnn
-batch_size: 2
+model_type: first
+batch_size: 1
 num_classes: 7
 early_stop_patience: 5
 early_stop_delta: 0.0001
 dropout: 0.2
 learning_rate: 0.00005
 hidden_size: 2048
+window_size: 512
 seed: 123

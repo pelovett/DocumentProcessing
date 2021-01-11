@@ -6,7 +6,6 @@ from pytorch_lightning.callbacks import early_stopping, ModelCheckpoint
 import yaml
 
 from WOSDataLoader import WOSDataModule
-from WOSDataset import WOSDataset
 from DocumentModel import DocumentModel
 
 
