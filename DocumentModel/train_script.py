@@ -5,6 +5,8 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import early_stopping, ModelCheckpoint
 import yaml
 
+from ImdbDataLoader import ImdbDataModule
+from HypeDataLoader import HypeDataModule
 from WOSDataLoader import WOSDataModule
 from DocumentModel import DocumentModel
 
@@ -16,7 +18,16 @@ def main(config, gpus):
     run_name = config['experiment_name']
     seed = config['seed']
 
-    wos_data = WOSDataModule(config)
+    if config['dataset'] == 'hyperpartisan_news':
+        data_module = HypeDataModule(config)
+    elif config['dataset'] == 'web_of_science':
+        data_module = WOSDataModule(config)
+    elif config['dataset'] == 'imdb':
+        data_module = ImdbDataModule(config)
+    else:
+        print(f"### Unknown dataset: {config['dataset']} ###")
+        raise NotImplementedError
+
     model = DocumentModel(config)
 
     early_stop_callback = early_stopping.EarlyStopping(
@@ -47,7 +58,7 @@ def main(config, gpus):
                          gpus=[gpus] if gpus != None else None)
     # precision=16)
     pl.trainer.seed_everything(seed)
-    trainer.fit(model, wos_data)
+    trainer.fit(model, data_module)
 
 
 if __name__ == '__main__':
