@@ -66,7 +66,7 @@ class ParentLoader(pl.LightningDataModule):
                 temp_map = []
                 doc_len = len(doc)
                 prev_end = 0
-                for j in range(doc_len // window_size):
+                for j in range(min(doc_len // window_size, 8)):
                     # Group this current batch with its parent
                     temp_map.append(window_index)
                     window_index += 1
@@ -77,7 +77,7 @@ class ParentLoader(pl.LightningDataModule):
                     output_batch['token_type_ids'].append([0]*(window_size+2))
                     output_batch['attention_mask'].append([1]*(window_size+2))
                     prev_end = cur_end
-                if doc_len % window_size != 0:
+                if doc_len % window_size != 0 and doc_len // window_size < 8:
                     temp_map.append(window_index)
                     window_index += 1
                     pad_value = window_size - len(doc[prev_end:])
