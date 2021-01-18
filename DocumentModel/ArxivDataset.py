@@ -8,32 +8,39 @@ import xml.etree.ElementTree as ET
 import logging
 
 
-class ImdbDataset(Dataset):
+label_dict = {
+    'cs_AI': 0, 'cs_CV': 1, 'cs_IT': 2, 'cs_PL': 3, 'math_AC': 4,
+    'math_ST': 5, 'cs_CE': 6, 'cs_DS': 7, 'cs_NE': 8, 'cs_SY': 9,
+    'math_GR': 10
+}
+
+
+class ArxivDataset(Dataset):
     logger = logging.getLogger(__name__)
 
     def __init__(self,
-                 file_path: str = './data/aclImdb/',
+                 file_path: str = './data/arxiv/',
                  tokenizer: str = 'bert-base-cased',
                  split: str = 'train/'):
         super().__init__()
         self.file_path = file_path
-        assert split in {'train/', 'test/'}
+        assert split in {'train/', 'validation/', 'test/'}
         self.x = []
         self.y = []
 
         try:
-            for i, subdir in enumerate(['neg/', 'pos/']):
-                dir_path = file_path+split+subdir
+            for subdir in listdir(file_path+split):
+                label = label_dict[subdir]
+                dir_path = file_path+split+subdir+'/'
                 for review in listdir(dir_path):
                     with open(dir_path+review, 'r') as in_file:
                         self.x.append(in_file.read().strip())
-                    self.y.append(i)
-
+                    self.y.append(label)
         except FileNotFoundError:
             logging.error(
                 f'### Failed to find data file: {dir_path+review}')
             raise FileNotFoundError
-        self.num_labels = 2
+        self.num_labels = len(label_dict)
         try:
             assert len(self.x) == len(self.y)
         except AssertionError:

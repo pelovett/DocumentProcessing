@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import early_stopping, ModelCheckpoint
 import yaml
 
+from ArxivDataLoader import ArxivDataModule
 from ImdbDataLoader import ImdbDataModule
 from HypeDataLoader import HypeDataModule
 from WOSDataLoader import WOSDataModule
@@ -24,6 +25,8 @@ def main(config, gpus):
         data_module = WOSDataModule(config)
     elif config['dataset'] == 'imdb':
         data_module = ImdbDataModule(config)
+    elif config['dataset'] == 'arxiv':
+        data_module = ArxivDataModule(config)
     else:
         print(f"### Unknown dataset: {config['dataset']} ###")
         raise NotImplementedError
