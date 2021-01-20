@@ -22,12 +22,13 @@ class ImdbDataset(Dataset):
         self.y = []
 
         try:
-            for i, subdir in enumerate(['neg/', 'pos/']):
+            review = ''
+            for subdir, label in [('neg/', 0), ('pos/', 1)]:
                 dir_path = file_path+split+subdir
                 for review in listdir(dir_path):
                     with open(dir_path+review, 'r') as in_file:
                         self.x.append(in_file.read().strip())
-                    self.y.append(i)
+                    self.y.append(label)
 
         except FileNotFoundError:
             logging.error(
