@@ -79,7 +79,7 @@ class DocumentModel(pl.LightningModule):
         y = torch.stack(batch['label']).flatten()
         x_hat = self.forward(batch)
         loss = self.loss(x_hat, y)
-        self.log('train_loss', loss)
+        self.log('train_loss', loss, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):

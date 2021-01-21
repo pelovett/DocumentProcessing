@@ -44,7 +44,7 @@ def main(config, gpus):
     model_checkpoint_callback = ModelCheckpoint(
         monitor='validation_f1',
         dirpath='models/',
-        filename='run_name',
+        filename=run_name,
         mode='max'
     )
 
