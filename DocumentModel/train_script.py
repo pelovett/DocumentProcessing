@@ -9,6 +9,7 @@ from ArxivDataLoader import ArxivDataModule
 from ImdbDataLoader import ImdbDataModule
 from HypeDataLoader import HypeDataModule
 from WOSDataLoader import WOSDataModule
+from PatentDataLoader import PatentDataModule
 from DocumentModel import DocumentModel
 
 
@@ -19,6 +20,23 @@ def main(config, gpus):
     run_name = config['experiment_name']
     seed = config['seed']
 
+    if config['batch_size'] > 8:
+        assert config['batch_size'] in {16, 32}
+        if config['dataset'] == 'hyperpartisan_news':
+            config['batch_size'] = 4
+            if config['batch_size'] == 16:
+                accumulate_num = 4
+            else:
+                accumulate_num = 8
+        else:
+            config['batch_size'] = 8
+            if config['batch_size'] == 16:
+                accumulate_num = 2
+            else:
+                accumulate_num = 4
+    else:
+        accumulate_num = 1
+
     if config['dataset'] == 'hyperpartisan_news':
         data_module = HypeDataModule(config)
     elif config['dataset'] == 'web_of_science':
@@ -27,6 +45,8 @@ def main(config, gpus):
         data_module = ImdbDataModule(config)
     elif config['dataset'] == 'arxiv':
         data_module = ArxivDataModule(config)
+    elif config['dataset'] == 'patent':
+        data_module = PatentDataModule(config)
     else:
         print(f"### Unknown dataset: {config['dataset']} ###")
         raise NotImplementedError
@@ -56,6 +76,7 @@ def main(config, gpus):
     trainer = pl.Trainer(callbacks=[early_stop_callback,
                                     model_checkpoint_callback],
                          logger=logger,
+                         accumulate_grad_batches=accumulate_num,
                          log_every_n_steps=50,
                          progress_bar_refresh_rate=0,
                          gpus=[gpus] if gpus != None else None)

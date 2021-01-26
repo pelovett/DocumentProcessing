@@ -9,15 +9,17 @@ class WOSDataset(Dataset):
 
     def __init__(self,
                  file_path: str = './data/WOS11967/',
-                 tokenizer: str = 'bert-base-cased'):
+                 tokenizer: str = 'bert-base-cased',
+                 split: str = 'train'):
         super().__init__()
-        self.file_path = file_path
+        assert split in {'training', 'validation', 'test'}
+        self.file_path = file_path + split
 
         self.x = []
         self.y = []
 
         try:
-            with open(self.file_path+'X.txt', 'r') as feature_data_file:
+            with open(self.file_path+'/X.txt', 'r') as feature_data_file:
                 for line in feature_data_file:
                     self.x.append(line.strip())
         except FileNotFoundError:
@@ -27,7 +29,7 @@ class WOSDataset(Dataset):
 
         tag_set = set()
         try:
-            with open(self.file_path+'YL1.txt', 'r') as feature_data_file:
+            with open(self.file_path+'/Y.txt', 'r') as feature_data_file:
                 for line in feature_data_file:
                     self.y.append(int(line.strip()))
                     tag_set.add(int(line.strip()))
