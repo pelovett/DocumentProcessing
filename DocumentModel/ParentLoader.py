@@ -33,6 +33,7 @@ class ParentLoader(pl.LightningDataModule):
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_name)
         self.batch_size = config['batch_size']
         self.model_type = config['model_type']
+        self.multilabel = True if config['dataset'] == 'patent' else False
 
     def prepare_data(self):
         raise NotImplementedError
@@ -43,6 +44,9 @@ class ParentLoader(pl.LightningDataModule):
                                 for i in range(len(batch))]
         output_batch['label'] = [batch[i]['label']
                                  for i in range(len(batch))]
+        if self.multilabel:
+            output_batch['raw_label'] = [batch[i]['raw_label']
+                                         for i in range(len(batch))]
         if self.model_type == 'first':
             output_batch.update(self.tokenizer(
                 output_batch['text'],

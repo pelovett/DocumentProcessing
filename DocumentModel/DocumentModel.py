@@ -19,6 +19,7 @@ class DocumentModel(pl.LightningModule):
         dropout = config['dropout']
         transformer_base = config['transformer_name']
         num_classes = config['num_classes']
+        self.multilabel = True if config['dataset'] == 'patent' else False
         self.config = config
 
         assert self.model_type in DocumentModel.acceptable_model_types
@@ -38,7 +39,10 @@ class DocumentModel(pl.LightningModule):
                 batch_first=True,
                 dropout=dropout)
             self.head = nn.Linear(config['hidden_size'], num_classes)
-        self.loss = nn.CrossEntropyLoss()
+        if self.multilabel:
+            self.loss = nn.BCEWithLogitsLoss()
+        else:
+            self.loss = nn.CrossEntropyLoss()
         self.f1_score = pl.metrics.classification.F1(num_classes=num_classes)
         self.accuracy = pl.metrics.classification.Accuracy()
 
@@ -76,18 +80,27 @@ class DocumentModel(pl.LightningModule):
         return x_hat
 
     def training_step(self, batch, batch_idx):
-        y = torch.stack(batch['label']).flatten()
+        if self.multilabel:
+            y = torch.stack(batch['label'])
+        else:
+            y = torch.stack(batch['label']).flatten()
         x_hat = self.forward(batch)
         loss = self.loss(x_hat, y)
         self.log('train_loss', loss, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        y = torch.stack(batch['label']).flatten()
+        if self.multilabel:
+            y = torch.stack(batch['label'])
+        else:
+            y = torch.stack(batch['label']).flatten()
         x_hat = self.forward(batch)
         loss = self.loss(x_hat, y)
         self.log('validation_loss', loss)
-        pred = x_hat.argmax(dim=-1)
+        if not self.multilabel:
+            pred = x_hat.argmax(dim=-1)
+        else:
+            pred = x_hat
         return pred.detach(), y.detach()
 
     def validation_epoch_end(self, validation_step_outputs):
