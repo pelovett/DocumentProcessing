@@ -22,7 +22,7 @@ def main(config, gpus):
 
     if config['batch_size'] > 8:
         assert config['batch_size'] in {16, 32}
-        if config['dataset'] == 'hyperpartisan_news':
+        if config['dataset'] in {'small_hyper', 'hyperpartisan_news'}:
             config['batch_size'] = 4
             if config['batch_size'] == 16:
                 accumulate_num = 4
@@ -37,7 +37,7 @@ def main(config, gpus):
     else:
         accumulate_num = 1
 
-    if config['dataset'] == 'hyperpartisan_news':
+    if config['dataset'] in {'small_hyper', 'hyperpartisan_news'}:
         data_module = HypeDataModule(config)
     elif config['dataset'] == 'web_of_science':
         data_module = WOSDataModule(config)
