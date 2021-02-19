@@ -31,6 +31,7 @@ class ParentLoader(pl.LightningDataModule):
         self.data_dir = config['dataset_path']
         self.tokenizer_name = config['transformer_name']
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_name)
+        self.tokenizer.model_max_length = self.window_size
         self.batch_size = config['batch_size']
         self.model_type = config['model_type']
         if 'window_overlap' not in config:
@@ -86,7 +87,7 @@ class ParentLoader(pl.LightningDataModule):
                         num_windows = 1 + \
                             remainder // overlap_window_size
                     else:
-                        num_windows = 1
+                        num_windows = 0
                 else:
                     max_windows = 8 * 510 // window_size
                     num_windows = min(doc_len // window_size, max_windows)

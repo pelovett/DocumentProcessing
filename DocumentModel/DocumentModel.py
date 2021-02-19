@@ -11,6 +11,9 @@ from sklearn.metrics import f1_score
 class DocumentModel(pl.LightningModule):
     acceptable_model_types = set(
         ['first', 'sliding_window', 'transformer', 'rnn'])
+    # warm up lr (200 value comes from longformer paper)
+    # RoBERTa uses warmup on first 6% of steps followed
+    NUM_WARMUP_STEPS = 200
 
     def __init__(self, config):
         super().__init__()
@@ -24,7 +27,8 @@ class DocumentModel(pl.LightningModule):
 
         assert self.model_type in DocumentModel.acceptable_model_types
         self.base_config = AutoConfig.from_pretrained(transformer_base)
-        self.base_model = AutoModel.from_pretrained(transformer_base)
+        self.base_model = AutoModel.from_pretrained(transformer_base,
+                                                    gradient_checkpointing=True)
         self.head = nn.Linear(self.base_config.hidden_size, num_classes)
         if self.model_type == 'transformer':
             self.aggregator = nn.TransformerEncoderLayer(
@@ -110,6 +114,40 @@ class DocumentModel(pl.LightningModule):
         val_acc = self.accuracy(guesses, labels)
         self.log('validation_f1', val_f1)
         self.log('validation_acc', val_acc)
+
+    def test_step(self, batch, batch_idx):
+        return self.validation_step(batch, batch_idx)
+
+    def test_epoch_end(self, validation_step_outputs):
+        guesses = torch.cat([x[0] for x in validation_step_outputs])
+        labels = torch.cat([x[1] for x in validation_step_outputs])
+        test_f1 = self.f1_score(guesses, labels)
+        test_acc = self.accuracy(guesses, labels)
+        self.log('test_f1', test_f1)
+        self.log('test_acc', test_acc)
+
+    def optimizer_step(self, current_epoch, batch_nb, optimizer,
+                       optimizer_idx, closure, on_tpu=False,
+                       using_native_amp=False, using_lbfgs=False):
+        # learning rate warm-up
+        # flag check is verbose for readability and back compatibility
+        if 'lr_warmup' in self.config and self.config['lr_warmup'] == True:
+            warmup_steps = DocumentModel.NUM_WARMUP_STEPS
+            if self.trainer.global_step < warmup_steps:
+                lr_scale = min(1.,
+                               float(self.trainer.global_step + 1) /
+                               float(warmup_steps))
+            else:
+                total_num_steps = len(self.trainer.train_dataloader) * \
+                    self.config['maximum_num_epochs'] - warmup_steps
+                adjusted_step_count = self.trainer.global_step - warmup_steps
+                lr_scale = min(1.,
+                               1 - (adjusted_step_count / total_num_steps))
+            for pg in optimizer.param_groups:
+                pg['lr'] = lr_scale * self.config['learning_rate']
+
+        # update params
+        optimizer.step(closure=closure)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)

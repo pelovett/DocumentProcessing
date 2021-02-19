@@ -15,6 +15,7 @@ from DocumentModel import DocumentModel
 
 def main(config, gpus):
     patience = config['early_stop_patience']
+    max_epochs = config['maximum_num_epochs']
     min_delta = config['early_stop_delta']
     log_dir = config['logging_dir']
     run_name = config['experiment_name']
@@ -23,17 +24,17 @@ def main(config, gpus):
     if config['batch_size'] > 8:
         assert config['batch_size'] in {16, 32}
         if config['dataset'] in {'small_hyper', 'hyperpartisan_news'}:
-            config['batch_size'] = 4
             if config['batch_size'] == 16:
                 accumulate_num = 4
             else:
                 accumulate_num = 8
+            config['batch_size'] = 4
         else:
-            config['batch_size'] = 8
             if config['batch_size'] == 16:
                 accumulate_num = 2
             else:
                 accumulate_num = 4
+            config['batch_size'] = 8
     else:
         accumulate_num = 1
 
@@ -77,6 +78,7 @@ def main(config, gpus):
                                     model_checkpoint_callback],
                          logger=logger,
                          accumulate_grad_batches=accumulate_num,
+                         max_epochs=max_epochs,
                          log_every_n_steps=50,
                          progress_bar_refresh_rate=0,
                          gpus=[gpus] if gpus != None else None)
