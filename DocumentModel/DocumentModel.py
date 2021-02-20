@@ -27,8 +27,8 @@ class DocumentModel(pl.LightningModule):
 
         assert self.model_type in DocumentModel.acceptable_model_types
         self.base_config = AutoConfig.from_pretrained(transformer_base)
-        self.base_model = AutoModel.from_pretrained(transformer_base,
-                                                    gradient_checkpointing=True)
+        self.base_model = AutoModel.from_pretrained(transformer_base)
+        # gradient_checkpointing=True)
         self.head = nn.Linear(self.base_config.hidden_size, num_classes)
         if self.model_type == 'transformer':
             self.aggregator = nn.TransformerEncoderLayer(
@@ -148,6 +148,7 @@ class DocumentModel(pl.LightningModule):
 
         # update params
         optimizer.step(closure=closure)
+        optimizer.zero_grad()
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)

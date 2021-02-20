@@ -77,6 +77,7 @@ def main(config, gpus):
     trainer = pl.Trainer(callbacks=[early_stop_callback,
                                     model_checkpoint_callback],
                          logger=logger,
+                         enable_pl_optimizer=True,
                          accumulate_grad_batches=accumulate_num,
                          max_epochs=max_epochs,
                          log_every_n_steps=50,
