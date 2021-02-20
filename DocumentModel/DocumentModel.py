@@ -146,9 +146,14 @@ class DocumentModel(pl.LightningModule):
             for pg in optimizer.param_groups:
                 pg['lr'] = lr_scale * self.config['learning_rate']
 
-        # update params
-        optimizer.step(closure=closure)
-        optimizer.zero_grad()
+        if self.config['accumulate_num'] > 1:
+            if self.trainer.global_step % self.config['accumulate_num'] == 0:
+                # update params
+                optimizer.step(closure=closure)
+                optimizer.zero_grad()
+        else:
+            optimizer.step(closure=closure)
+            optimizer.zero_grad()
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
