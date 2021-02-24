@@ -78,6 +78,7 @@ def main(config, gpus):
                                     model_checkpoint_callback],
                          logger=logger,
                          enable_pl_optimizer=True,
+                         gradient_clip_val=0.25,
                          accumulate_grad_batches=accumulate_num,
                          max_epochs=max_epochs,
                          log_every_n_steps=50,

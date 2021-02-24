@@ -129,6 +129,12 @@ class DocumentModel(pl.LightningModule):
     def optimizer_step(self, current_epoch, batch_nb, optimizer,
                        optimizer_idx, closure, on_tpu=False,
                        using_native_amp=False, using_lbfgs=False):
+        # accumulation means we only backpropagate after backpropagating
+        # on a set number of batches
+        if self.config['accumulate_num'] > 1:
+            if self.trainer.global_step % self.config['accumulate_num'] != 0:
+                return
+
         # learning rate warm-up
         # flag check is verbose for readability and back compatibility
         if 'lr_warmup' in self.config and self.config['lr_warmup'] == True:
@@ -146,14 +152,8 @@ class DocumentModel(pl.LightningModule):
             for pg in optimizer.param_groups:
                 pg['lr'] = lr_scale * self.config['learning_rate']
 
-        if self.config['accumulate_num'] > 1:
-            if self.trainer.global_step % self.config['accumulate_num'] == 0:
-                # update params
-                optimizer.step(closure=closure)
-                optimizer.zero_grad()
-        else:
-            optimizer.step(closure=closure)
-            optimizer.zero_grad()
+        optimizer.step(closure=closure)
+        optimizer.zero_grad()
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
