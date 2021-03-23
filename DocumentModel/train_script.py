@@ -51,7 +51,7 @@ def main(config, gpus):
     else:
         print(f"### Unknown dataset: {config['dataset']} ###")
         raise NotImplementedError
-
+    pl.trainer.seed_everything(seed)
     model = DocumentModel(config)
 
     early_stop_callback = early_stopping.EarlyStopping(
@@ -85,7 +85,6 @@ def main(config, gpus):
                          progress_bar_refresh_rate=0,
                          gpus=[gpus] if gpus != None else None)
     # precision=16)
-    pl.trainer.seed_everything(seed)
     trainer.fit(model, data_module)
 
 

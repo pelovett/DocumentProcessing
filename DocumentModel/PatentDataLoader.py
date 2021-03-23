@@ -37,7 +37,7 @@ class PatentDataModule(ParentLoader):
                           num_workers=1)
 
     def test_dataloader(self):
-        raise DataLoader(self.test_dataset,
-                         collate_fn=self.collate_dict,
-                         batch_size=self.batch_size,
-                         num_workers=1)
+        return DataLoader(self.test_dataset,
+                          collate_fn=self.collate_dict,
+                          batch_size=self.batch_size,
+                          num_workers=1)
