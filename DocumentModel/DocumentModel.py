@@ -44,7 +44,12 @@ class DocumentModel(pl.LightningModule):
                 dropout=dropout)
             self.head = nn.Linear(config['hidden_size'], num_classes)
         if self.multilabel:
-            self.loss = nn.BCEWithLogitsLoss()
+            label_weights = [config['counts'][i]
+                             for i in range(num_classes)]
+            total_num_samples = sum(label_weights)
+            label_weights = [total_num_samples / x for x in label_weights]
+            self.loss = nn.BCEWithLogitsLoss(
+                weight=torch.FloatTensor(label_weights))
         else:
             self.loss = nn.CrossEntropyLoss()
         self.f1_score = pl.metrics.classification.F1(num_classes=num_classes)
