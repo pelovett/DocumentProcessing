@@ -48,8 +48,7 @@ def main(config, gpus):
         data_module = ArxivDataModule(config)
     elif config['dataset'] == 'patent':
         data_module = PatentDataModule(config)
-        # Make counts available for weighting loss function
-        config['counts'] = data_module.train_dataloader.label_counts
+        config['counts'] = data_module.label_counts
     else:
         print(f"### Unknown dataset: {config['dataset']} ###")
         raise NotImplementedError

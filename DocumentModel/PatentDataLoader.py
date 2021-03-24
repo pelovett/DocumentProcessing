@@ -1,6 +1,7 @@
 from torch.utils.data import random_split, DataLoader
 
 from math import floor
+import json
 
 from ParentLoader import ParentLoader
 from PatentDataset import PatentDataset
@@ -10,6 +11,19 @@ class PatentDataModule(ParentLoader):
 
     def __init__(self, config):
         super().__init__(config)
+        with open(self.data_dir+'USPTO-labels.json', 'r') as in_file:
+            tag_map = json.loads(in_file.read())
+
+        self.label_counts = dict()
+        with open(self.data_dir+'USPTO-train.json', 'r') as in_file:
+            for line in in_file:
+                cur = json.loads(line)
+                for sub in cur['Subclass_labels']:
+                    label_index = tag_map[sub]
+                    if label_index in self.label_counts:
+                        self.label_counts[label_index] += 1
+                    else:
+                        self.label_counts[label_index] = 1
 
     def prepare_data(self):
         self.train_dataset = PatentDataset(self.data_dir,

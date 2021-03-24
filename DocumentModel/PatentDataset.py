@@ -21,7 +21,6 @@ class PatentDataset(Dataset):
         assert split in {'Train', 'Validation', 'Test'}
         self.x = []
         self.y = []
-        self.label_counts = dict()
 
         with open(file_path+'USPTO-labels.json', 'r') as in_file:
             tag_map = json.loads(in_file.read())
@@ -42,10 +41,6 @@ class PatentDataset(Dataset):
                     for sub in cur['Subclass_labels']:
                         label_index = tag_map[sub]
                         targets.append(label_index)
-                        if label_index in self.label_counts:
-                            self.label_counts[label_index] += 1
-                        else:
-                            self.label_counts[label_index] = 1
                     self.y.append(targets)
             self.num_labels = len(tag_map)
 
